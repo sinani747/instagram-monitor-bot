@@ -1,8 +1,8 @@
 import requests
 import os
 
-TOKEN = os.environ["8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"]
-CHAT_ID = os.environ["473201462"]
+TOKEN = os.environ["TOKEN"]
+CHAT_ID = os.environ["CHAT_ID"]
 
 def send(msg):
     requests.post(
