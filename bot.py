@@ -14,6 +14,7 @@ rss_url = f"https://rsshub.app/instagram/user/{USERNAME}"
 
 
 def send_photo(photo, caption):
+
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
 
     requests.post(url, data={
@@ -39,7 +40,6 @@ try:
 
     r = requests.get(rss_url, timeout=20)
 
-    # если RSSHub не отвечает
     if r.status_code != 200:
         exit()
 
@@ -49,7 +49,11 @@ try:
     if not data.startswith("<"):
         exit()
 
-    root = ET.fromstring(data)
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        # игнорируем XML ошибки
+        exit()
 
     item = root.find(".//item")
 
@@ -60,6 +64,7 @@ try:
     guid = item.find("guid").text
 
     enclosure = item.find(".//enclosure")
+
     if enclosure is None:
         exit()
 
@@ -73,6 +78,5 @@ try:
 
         save_last(guid)
 
-except Exception:
-    # ошибки игнорируются
+except:
     pass
