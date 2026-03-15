@@ -1,3 +1,5 @@
+print("NEW VERSION STARTED")
+
 import requests
 import xml.etree.ElementTree as ET
 import os
