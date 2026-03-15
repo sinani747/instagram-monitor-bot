@@ -11,6 +11,7 @@ STATE_FILE = "last.txt"
 
 rss_url = f"https://rsshub.app/instagram/user/{USERNAME}"
 
+
 def send_message(text):
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -19,6 +20,7 @@ def send_message(text):
         "chat_id": CHAT_ID,
         "text": text
     })
+
 
 def send_photo(photo, caption):
 
@@ -30,6 +32,7 @@ def send_photo(photo, caption):
         "caption": caption
     })
 
+
 def load_last():
 
     if os.path.exists(STATE_FILE):
@@ -40,15 +43,27 @@ def load_last():
 
     return ""
 
+
 def save_last(value):
 
     with open(STATE_FILE, "w") as f:
 
         f.write(value)
 
+
 try:
 
-    r = requests.get(rss_url)
+    r = requests.get(rss_url, timeout=20)
+
+    if r.status_code != 200:
+
+        send_message("RSS сервер не отвечает")
+        exit()
+
+    if "<rss" not in r.text:
+
+        send_message("RSS временно недоступен")
+        exit()
 
     root = ET.fromstring(r.text)
 
@@ -74,4 +89,4 @@ try:
 
 except Exception as e:
 
-    send_message(f"Ошибка: {e}")
+    send_message(f"Ошибка RSS: {e}")
