@@ -1,5 +1,6 @@
 import requests
 import os
+import json
 
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
@@ -46,15 +47,11 @@ def load_last_posts():
     if not os.path.exists(LAST_POST_FILE):
         return {}
 
-    import json
-
     with open(LAST_POST_FILE) as f:
         return json.load(f)
 
 
 def save_last_posts(data):
-
-    import json
 
     with open(LAST_POST_FILE, "w") as f:
         json.dump(data, f)
@@ -62,29 +59,25 @@ def save_last_posts(data):
 
 def check_account(username):
 
-    url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
+    url = f"https://www.instagram.com/{username}/"
 
     r = requests.get(url, headers=headers)
 
-    data = r.json()
+    if r.status_code != 200:
+        raise Exception("Instagram не отвечает")
 
-    post = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"][0]["node"]
+    text = r.text
 
-    post_id = post["id"]
+    start = text.find('"shortcode":"')
 
-    shortcode = post["shortcode"]
+    if start == -1:
+        raise Exception("Пост не найден")
 
-    photo = post["display_url"]
-
-    caption = ""
-
-    if post["edge_media_to_caption"]["edges"]:
-
-        caption = post["edge_media_to_caption"]["edges"][0]["node"]["text"]
+    shortcode = text[start+13:start+24]
 
     link = f"https://instagram.com/p/{shortcode}"
 
-    return post_id, photo, caption, link
+    return shortcode, link
 
 
 try:
@@ -93,15 +86,15 @@ try:
 
     for account in ACCOUNTS:
 
-        post_id, photo, caption, link = check_account(account)
+        post_id, link = check_account(account)
 
         last_post = last_posts.get(account)
 
         if post_id != last_post:
 
-            text = f"🔥 Новый пост @{account}\n\n{caption}\n\n{link}"
+            text = f"🔥 Новый пост @{account}\n\n{link}"
 
-            send_photo(photo, text)
+            send_message(text)
 
             last_posts[account] = post_id
 
