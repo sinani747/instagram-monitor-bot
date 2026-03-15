@@ -1,46 +1,52 @@
 import requests
-from bs4 import BeautifulSoup
-import time
+import json
+import os
 
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
 
-URL = "https://www.instagram.com/teenageengineering/"
+USERNAME = "teenageengineering"
+
+url = f"https://www.instagram.com/{USERNAME}/?__a=1&__d=dis"
 
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
-last_post = None
+data = requests.get(url, headers=headers).json()
 
-def send(msg):
+post = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"][0]["node"]
+
+post_id = post["id"]
+caption = ""
+
+if post["edge_media_to_caption"]["edges"]:
+    caption = post["edge_media_to_caption"]["edges"][0]["node"]["text"]
+
+photo = post["display_url"]
+link = f"https://instagram.com/p/{post['shortcode']}"
+
+# файл памяти
+file = "last_post.txt"
+
+last_post = ""
+
+if os.path.exists(file):
+    with open(file, "r") as f:
+        last_post = f.read()
+
+if post_id != last_post:
+
+    message = f"📸 Новый пост\n\n{caption}\n\n{link}"
+
     requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={"chat_id": CHAT_ID, "text": msg}
+        f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+        data={
+            "chat_id": CHAT_ID,
+            "photo": photo,
+            "caption": message
+        }
     )
 
-def check_instagram():
-    global last_post
-
-    r = requests.get(URL, headers=headers)
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    links = soup.find_all("a")
-
-    for link in links:
-        href = link.get("href", "")
-        if "/p/" in href:
-            post_link = "https://instagram.com" + href
-
-            if last_post is None:
-                last_post = post_link
-                return
-
-            if post_link != last_post:
-                last_post = post_link
-                send(f"📸 Новый пост!\n{post_link}")
-                return
-
-while True:
-    check_instagram()
-    time.sleep(60)
+    with open(file, "w") as f:
+        f.write(post_id)
