@@ -5,7 +5,6 @@ import os
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
 
-# аккаунты которые будем отслеживать
 ACCOUNTS = [
     "teenageengineering"
 ]
@@ -13,18 +12,25 @@ ACCOUNTS = [
 STATE_FILE = "state.json"
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0",
     "Accept": "application/json"
 }
 
 
 def send_message(text):
+
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
+
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": text
+    })
 
 
 def send_photo(photo, caption):
+
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+
     requests.post(url, data={
         "chat_id": CHAT_ID,
         "photo": photo,
@@ -33,68 +39,77 @@ def send_photo(photo, caption):
 
 
 def load_state():
+
     if os.path.exists(STATE_FILE):
+
         with open(STATE_FILE, "r") as f:
+
             return json.load(f)
+
     return {}
 
 
 def save_state(state):
+
     with open(STATE_FILE, "w") as f:
+
         json.dump(state, f)
 
 
 def check_account(username, state):
 
-    url = f"https://www.instagram.com/api/v1/users/web_profile_info/?username={username}"
+    try:
 
-    r = requests.get(url, headers=headers, timeout=15)
+        url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
 
-    if r.status_code != 200:
-        send_message(f"⚠️ Instagram не отвечает: {username}")
-        return
+        r = requests.get(url, headers=headers, timeout=20)
 
-    data = r.json()
+        if r.status_code != 200:
 
-    edges = data["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
+            send_message(f"⚠️ Instagram не отвечает @{username}")
 
-    if not edges:
-        return
+            return
 
-    post = edges[0]["node"]
+        data = r.json()
 
-    shortcode = post["shortcode"]
-    image = post["display_url"]
+        edges = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"]
 
-    last = state.get(username)
+        if not edges:
 
-    if shortcode != last:
+            return
 
-        link = f"https://instagram.com/p/{shortcode}"
+        post = edges[0]["node"]
 
-        send_photo(
-            image,
-            f"📸 Новый пост @{username}\n{link}"
-        )
+        shortcode = post["shortcode"]
 
-        state[username] = shortcode
+        photo = post["display_url"]
 
-    else:
-        print("нет нового поста")
+        last_post = state.get(username)
+
+        if shortcode != last_post:
+
+            link = f"https://instagram.com/p/{shortcode}"
+
+            send_photo(photo, f"📸 Новый пост @{username}\n{link}")
+
+            state[username] = shortcode
+
+    except Exception as e:
+
+        send_message(f"Ошибка @{username}: {e}")
 
 
 def main():
 
     state = load_state()
 
-    for acc in ACCOUNTS:
-        try:
-            check_account(acc, state)
-        except Exception as e:
-            send_message(f"Ошибка @{acc}: {e}")
+    for account in ACCOUNTS:
+
+        check_account(account, state)
 
     save_state(state)
 
 
 if __name__ == "__main__":
+
     main()
