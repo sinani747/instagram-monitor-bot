@@ -12,25 +12,20 @@ ACCOUNTS = [
 STATE_FILE = "state.json"
 
 headers = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "X-IG-App-ID": "936619743392459"
 }
 
 
 def send_message(text):
-
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
-    requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "text": text
-    })
+    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
 
 def send_photo(photo, caption):
-
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
-
     requests.post(url, data={
         "chat_id": CHAT_ID,
         "photo": photo,
@@ -39,64 +34,48 @@ def send_photo(photo, caption):
 
 
 def load_state():
-
     if os.path.exists(STATE_FILE):
-
-        with open(STATE_FILE, "r") as f:
-
+        with open(STATE_FILE) as f:
             return json.load(f)
-
     return {}
 
 
 def save_state(state):
-
     with open(STATE_FILE, "w") as f:
-
         json.dump(state, f)
 
 
 def check_account(username, state):
 
-    try:
+    url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
 
-        url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
+    r = requests.get(url, headers=headers, timeout=20)
 
-        r = requests.get(url, headers=headers, timeout=20)
+    if r.status_code != 200:
+        send_message(f"⚠️ Instagram не отвечает @{username}")
+        return
 
-        if r.status_code != 200:
+    data = r.json()
 
-            send_message(f"⚠️ Instagram не отвечает @{username}")
+    posts = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"]
 
-            return
+    if not posts:
+        return
 
-        data = r.json()
+    post = posts[0]["node"]
 
-        edges = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"]
+    shortcode = post["shortcode"]
+    photo = post["display_url"]
 
-        if not edges:
+    last = state.get(username)
 
-            return
+    if shortcode != last:
 
-        post = edges[0]["node"]
+        link = f"https://instagram.com/p/{shortcode}"
 
-        shortcode = post["shortcode"]
+        send_photo(photo, f"📸 Новый пост @{username}\n{link}")
 
-        photo = post["display_url"]
-
-        last_post = state.get(username)
-
-        if shortcode != last_post:
-
-            link = f"https://instagram.com/p/{shortcode}"
-
-            send_photo(photo, f"📸 Новый пост @{username}\n{link}")
-
-            state[username] = shortcode
-
-    except Exception as e:
-
-        send_message(f"Ошибка @{username}: {e}")
+        state[username] = shortcode
 
 
 def main():
@@ -104,12 +83,13 @@ def main():
     state = load_state()
 
     for account in ACCOUNTS:
-
-        check_account(account, state)
+        try:
+            check_account(account, state)
+        except Exception as e:
+            send_message(f"Ошибка @{account}: {e}")
 
     save_state(state)
 
 
 if __name__ == "__main__":
-
     main()
