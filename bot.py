@@ -41,14 +41,12 @@ try:
 
     # если RSSHub не отвечает
     if r.status_code != 200:
-        print("RSS недоступен")
         exit()
 
     data = r.text.strip()
 
     # если RSSHub вернул не XML
     if not data.startswith("<"):
-        print("RSS вернул не XML")
         exit()
 
     root = ET.fromstring(data)
@@ -56,7 +54,6 @@ try:
     item = root.find(".//item")
 
     if item is None:
-        print("Нет постов")
         exit()
 
     link = item.find("link").text
@@ -64,7 +61,6 @@ try:
 
     enclosure = item.find(".//enclosure")
     if enclosure is None:
-        print("Нет фото")
         exit()
 
     photo = enclosure.attrib["url"]
@@ -77,6 +73,6 @@ try:
 
         save_last(guid)
 
-except Exception as e:
-
-    print("Ошибка:", e)
+except Exception:
+    # ошибки игнорируются
+    pass
