@@ -1,109 +1,115 @@
-import requests
+import time
 import os
-import json
+import telegram
+from instagrapi import Client
 
-TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
+# ===== ТВОИ ДАННЫЕ =====
+
+TELEGRAM_TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
 
-ACCOUNTS = [
-    "teenageengineering",
-    "instagram"
-]
+IG_USERNAME = “aaron_sinani”
+IG_PASSWORD = “Alina19@_”
 
-LAST_POST_FILE = "last_posts.json"
+TARGET_USER = "teenageengineering"
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
-}
+# =======================
 
+SESSION_FILE = "session.json"
+LAST_POST_FILE = "last_post.txt"
 
-def send_message(text):
-
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
-    data = {
-        "chat_id": CHAT_ID,
-        "text": text
-    }
-
-    requests.post(url, data=data)
+bot = telegram.Bot(token=TELEGRAM_TOKEN)
+cl = Client()
 
 
-def send_photo(photo, caption):
-
-    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
-
-    data = {
-        "chat_id": CHAT_ID,
-        "photo": photo,
-        "caption": caption
-    }
-
-    requests.post(url, data=data)
+def send(msg):
+    try:
+        bot.send_message(chat_id=CHAT_ID, text=msg)
+    except Exception as e:
+        print("Telegram error:", e)
 
 
-def load_last_posts():
+def login():
 
-    if not os.path.exists(LAST_POST_FILE):
-        return {}
+    try:
 
-    with open(LAST_POST_FILE) as f:
-        return json.load(f)
+        if os.path.exists(SESSION_FILE):
 
+            cl.load_settings(SESSION_FILE)
+            cl.login(IG_USERNAME, IG_PASSWORD)
 
-def save_last_posts(data):
-
-    with open(LAST_POST_FILE, "w") as f:
-        json.dump(data, f)
-
-
-def check_account(username):
-
-    url = f"https://www.instagram.com/{username}/"
-
-    r = requests.get(url, headers=headers)
-
-    if r.status_code != 200:
-        raise Exception("Instagram не отвечает")
-
-    text = r.text
-
-    start = text.find('"shortcode":"')
-
-    if start == -1:
-        raise Exception("Пост не найден")
-
-    shortcode = text[start+13:start+24]
-
-    link = f"https://instagram.com/p/{shortcode}"
-
-    return shortcode, link
-
-
-try:
-
-    last_posts = load_last_posts()
-
-    for account in ACCOUNTS:
-
-        post_id, link = check_account(account)
-
-        last_post = last_posts.get(account)
-
-        if post_id != last_post:
-
-            text = f"🔥 Новый пост @{account}\n\n{link}"
-
-            send_message(text)
-
-            last_posts[account] = post_id
+            send("Instagram session восстановлена")
 
         else:
 
-            send_message(f"✅ @{account} — новых постов нет")
+            cl.login(IG_USERNAME, IG_PASSWORD)
+            cl.dump_settings(SESSION_FILE)
 
-    save_last_posts(last_posts)
+            send("Создана новая Instagram session")
 
-except Exception as e:
+    except Exception as e:
 
-    send_message(f"⚠️ Ошибка бота: {e}")
+        send(f"Login error: {e}")
+
+        time.sleep(60)
+
+        cl.login(IG_USERNAME, IG_PASSWORD)
+        cl.dump_settings(SESSION_FILE)
+
+        send("Повторный login успешный")
+
+
+def get_last_post():
+
+    if not os.path.exists(LAST_POST_FILE):
+        return None
+
+    with open(LAST_POST_FILE, "r") as f:
+        return f.read().strip()
+
+
+def save_last_post(post_id):
+
+    with open(LAST_POST_FILE, "w") as f:
+        f.write(post_id)
+
+
+def check_new_post():
+
+    try:
+
+        user_id = cl.user_id_from_username(TARGET_USER)
+
+        medias = cl.user_medias(user_id, 1)
+
+        if not medias:
+            return
+
+        current_post = str(medias[0].pk)
+
+        last_post = get_last_post()
+
+        if current_post != last_post:
+
+            save_last_post(current_post)
+
+            link = f"https://instagram.com/p/{medias[0].code}"
+
+            send(f"🔥 Новый пост @{TARGET_USER}\n{link}")
+
+    except Exception as e:
+
+        send(f"Instagram error: {e}")
+
+
+def main():
+
+    send("Бот запущен")
+
+    login()
+
+    check_new_post()
+
+
+if __name__ == "__main__":
+    main()
