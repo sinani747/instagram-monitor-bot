@@ -1,52 +1,30 @@
 import requests
-import json
 import os
 
-TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
-CHAT_ID = "473201462"
+TOKEN = os.environ["8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"]
+CHAT_ID = os.environ["473201462"]
 
-USERNAME = "teenageengineering"
+def send(msg):
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data={"chat_id": CHAT_ID, "text": msg}
+    )
 
-url = f"https://www.instagram.com/{USERNAME}/?__a=1&__d=dis"
+username = "teenageengineering"
+
+url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
 
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
-data = requests.get(url, headers=headers).json()
+try:
+    r = requests.get(url, headers=headers)
 
-post = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"][0]["node"]
+    if r.status_code == 200:
+        send("🤖 Бот проверил Instagram — работает")
+    else:
+        send("⚠️ Instagram не ответил")
 
-post_id = post["id"]
-caption = ""
-
-if post["edge_media_to_caption"]["edges"]:
-    caption = post["edge_media_to_caption"]["edges"][0]["node"]["text"]
-
-photo = post["display_url"]
-link = f"https://instagram.com/p/{post['shortcode']}"
-
-# файл памяти
-file = "last_post.txt"
-
-last_post = ""
-
-if os.path.exists(file):
-    with open(file, "r") as f:
-        last_post = f.read()
-
-if post_id != last_post:
-
-    message = f"📸 Новый пост\n\n{caption}\n\n{link}"
-
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-        data={
-            "chat_id": CHAT_ID,
-            "photo": photo,
-            "caption": message
-        }
-    )
-
-    with open(file, "w") as f:
-        f.write(post_id)
+except Exception as e:
+    send("❌ Ошибка: " + str(e))
