@@ -1,16 +1,20 @@
 import requests
-import json
 import os
 
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
-USERNAME = "teenageengineering"
 
-LAST_POST_FILE = "last_post.txt"
+ACCOUNTS = [
+    "teenageengineering",
+    "instagram"
+]
+
+LAST_POST_FILE = "last_posts.json"
 
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
+
 
 def send_message(text):
 
@@ -37,24 +41,28 @@ def send_photo(photo, caption):
     requests.post(url, data=data)
 
 
-def get_last_post():
+def load_last_posts():
 
     if not os.path.exists(LAST_POST_FILE):
-        return None
+        return {}
 
-    with open(LAST_POST_FILE, "r") as f:
-        return f.read().strip()
+    import json
+
+    with open(LAST_POST_FILE) as f:
+        return json.load(f)
 
 
-def save_last_post(post_id):
+def save_last_posts(data):
+
+    import json
 
     with open(LAST_POST_FILE, "w") as f:
-        f.write(post_id)
+        json.dump(data, f)
 
 
-def check_instagram():
+def check_account(username):
 
-    url = f"https://www.instagram.com/{USERNAME}/?__a=1&__d=dis"
+    url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
 
     r = requests.get(url, headers=headers)
 
@@ -81,22 +89,28 @@ def check_instagram():
 
 try:
 
-    post_id, photo, caption, link = check_instagram()
+    last_posts = load_last_posts()
 
-    last_post = get_last_post()
+    for account in ACCOUNTS:
 
-    if post_id != last_post:
+        post_id, photo, caption, link = check_account(account)
 
-        text = f"🔥 Новый пост\n\n{caption}\n\n{link}"
+        last_post = last_posts.get(account)
 
-        send_photo(photo, text)
+        if post_id != last_post:
 
-        save_last_post(post_id)
+            text = f"🔥 Новый пост @{account}\n\n{caption}\n\n{link}"
 
-    else:
+            send_photo(photo, text)
 
-        send_message("Бот работает. Новых постов нет.")
+            last_posts[account] = post_id
+
+        else:
+
+            send_message(f"✅ @{account} — новых постов нет")
+
+    save_last_posts(last_posts)
 
 except Exception as e:
 
-    send_message(f"⚠️ Ошибка: {e}")
+    send_message(f"⚠️ Ошибка бота: {e}")
