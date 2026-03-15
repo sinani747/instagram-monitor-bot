@@ -45,7 +45,6 @@ try:
 
     r = requests.get(rss_url, timeout=20)
 
-    # если RSS не ответил — просто выходим
     if r.status_code != 200:
         exit()
 
@@ -57,9 +56,7 @@ try:
     item = root.find(".//item")
 
     link = item.find("link").text
-
     guid = item.find("guid").text
-
     photo = item.find(".//enclosure").attrib["url"]
 
     last = load_last()
