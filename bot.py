@@ -1,4 +1,4 @@
-print("NEW VERSION STARTED")
+print("BOT STARTED")
 
 import requests
 import xml.etree.ElementTree as ET
@@ -30,27 +30,25 @@ def load_last():
     return ""
 
 
-def save_last(value):
+def save_last(v):
     with open(STATE_FILE, "w") as f:
-        f.write(value)
+        f.write(v)
 
 
 try:
 
     r = requests.get(rss_url, timeout=20)
 
+    # если RSSHub не отвечает
     if r.status_code != 200:
-        print("RSS не отвечает")
+        print("RSS недоступен")
         exit()
 
     data = r.text.strip()
 
-    if data == "":
-        print("RSS пустой")
-        exit()
-
-    if "<rss" not in data:
-        print("RSS неправильный")
+    # если RSSHub вернул не XML
+    if not data.startswith("<"):
+        print("RSS вернул не XML")
         exit()
 
     root = ET.fromstring(data)
@@ -63,7 +61,13 @@ try:
 
     link = item.find("link").text
     guid = item.find("guid").text
-    photo = item.find(".//enclosure").attrib["url"]
+
+    enclosure = item.find(".//enclosure")
+    if enclosure is None:
+        print("Нет фото")
+        exit()
+
+    photo = enclosure.attrib["url"]
 
     last = load_last()
 
