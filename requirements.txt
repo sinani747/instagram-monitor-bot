@@ -1,2 +1,4 @@
+requests
+beautifulsoup4
 instagrapi
 python-telegram-bot==13.15
