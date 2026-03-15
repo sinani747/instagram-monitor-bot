@@ -1,114 +1,110 @@
-import time
+import requests
+import json
 import os
-import telegram
-from instagrapi import Client
+from bs4 import BeautifulSoup
 
-# ===== ТВОИ ДАННЫЕ =====
-
-TELEGRAM_TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
+TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
-IG_USERNAME = "aaron_sinani"
-IG_PASSWORD = "Alina19@_"
 
-TARGET_USER = "teenageengineering"
+ACCOUNTS = [
+    "teenageengineering",
+    "instagram"
+]
 
-# =======================
+STATE_FILE = "state.json"
 
-SESSION_FILE = "session.json"
-LAST_POST_FILE = "last_post.txt"
-
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
-cl = Client()
-
-
-def send(msg):
-    try:
-        bot.send_message(chat_id=CHAT_ID, text=msg)
-    except Exception as e:
-        print("Telegram error:", e)
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
 
 
-def login():
+def send_message(text):
 
-    try:
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        if os.path.exists(SESSION_FILE):
+    data = {
+        "chat_id": CHAT_ID,
+        "text": text
+    }
 
-            cl.load_settings(SESSION_FILE)
-            cl.login(IG_USERNAME, IG_PASSWORD)
+    requests.post(url, data=data)
 
-            send("Instagram session восстановлена")
+
+def send_photo(photo, caption):
+
+    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+
+    data = {
+        "chat_id": CHAT_ID,
+        "photo": photo,
+        "caption": caption
+    }
+
+    requests.post(url, data=data)
+
+
+def load_state():
+
+    if not os.path.exists(STATE_FILE):
+        return {}
+
+    with open(STATE_FILE) as f:
+        return json.load(f)
+
+
+def save_state(data):
+
+    with open(STATE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def check_account(username):
+
+    url = f"https://www.instagram.com/{username}/"
+
+    r = requests.get(url, headers=headers, timeout=20)
+
+    if r.status_code != 200:
+        raise Exception(f"{username} не отвечает")
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    images = soup.find_all("img")
+
+    if len(images) < 2:
+        raise Exception(f"{username} фото не найдено")
+
+    photo = images[1]["src"]
+
+    link = f"https://instagram.com/{username}"
+
+    return photo, link
+
+
+try:
+
+    state = load_state()
+
+    for account in ACCOUNTS:
+
+        photo, link = check_account(account)
+
+        last = state.get(account)
+
+        if last != photo:
+
+            caption = f"🔥 Новый пост @{account}\n{link}"
+
+            send_photo(photo, caption)
+
+            state[account] = photo
 
         else:
 
-            cl.login(IG_USERNAME, IG_PASSWORD)
-            cl.dump_settings(SESSION_FILE)
+            send_message(f"✅ @{account} — новых постов нет")
 
-            send("Создана новая Instagram session")
+    save_state(state)
 
-    except Exception as e:
+except Exception as e:
 
-        send(f"Login error: {e}")
-
-        time.sleep(60)
-
-        cl.login(IG_USERNAME, IG_PASSWORD)
-        cl.dump_settings(SESSION_FILE)
-
-        send("Повторный login успешный")
-
-
-def get_last_post():
-
-    if not os.path.exists(LAST_POST_FILE):
-        return None
-
-    with open(LAST_POST_FILE, "r") as f:
-        return f.read().strip()
-
-
-def save_last_post(post_id):
-
-    with open(LAST_POST_FILE, "w") as f:
-        f.write(post_id)
-
-
-def check_new_post():
-
-    try:
-
-        user_id = cl.user_id_from_username(TARGET_USER)
-
-        medias = cl.user_medias(user_id, 1)
-
-        if not medias:
-            return
-
-        current_post = str(medias[0].pk)
-
-        last_post = get_last_post()
-
-        if current_post != last_post:
-
-            save_last_post(current_post)
-
-            link = f"https://instagram.com/p/{medias[0].code}"
-
-            send(f"🔥 Новый пост @{TARGET_USER}\n{link}")
-
-    except Exception as e:
-
-        send(f"Instagram error: {e}")
-
-
-def main():
-
-    send("Бот запущен")
-
-    login()
-
-    check_new_post()
-
-
-if __name__ == "__main__":
-    main()
+    send_message(f"⚠️ Ошибка: {e}")
