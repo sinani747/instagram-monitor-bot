@@ -12,16 +12,6 @@ STATE_FILE = "last.txt"
 rss_url = f"https://rsshub.app/instagram/user/{USERNAME}"
 
 
-def send_message(text):
-
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
-    requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "text": text
-    })
-
-
 def send_photo(photo, caption):
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
@@ -55,14 +45,11 @@ try:
 
     r = requests.get(rss_url, timeout=20)
 
+    # если RSS не ответил — просто выходим
     if r.status_code != 200:
-
-        send_message("RSS сервер не отвечает")
         exit()
 
     if "<rss" not in r.text:
-
-        send_message("RSS временно недоступен")
         exit()
 
     root = ET.fromstring(r.text)
@@ -83,10 +70,5 @@ try:
 
         save_last(guid)
 
-    else:
-
-        print("нет нового поста")
-
-except Exception as e:
-
-    send_message(f"Ошибка RSS: {e}")
+except:
+    pass
