@@ -4,19 +4,17 @@ import requests
 import xml.etree.ElementTree as ET
 import os
 
-TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
+TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0
+"
 CHAT_ID = "473201462"
 USERNAME = "teenageengineering"
 
 STATE_FILE = "last.txt"
-
-rss_url = f"https://rsshub.app/instagram/user/{USERNAME}"
+RSS_URL = f"https://rsshub.app/instagram/user/{USERNAME}"
 
 
 def send_photo(photo, caption):
-
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
-
     requests.post(url, data={
         "chat_id": CHAT_ID,
         "photo": photo,
@@ -37,26 +35,23 @@ def save_last(v):
 
 
 try:
-
-    r = requests.get(rss_url, timeout=20)
+    r = requests.get(RSS_URL, timeout=20)
 
     if r.status_code != 200:
         exit()
 
     data = r.text.strip()
 
-    # если RSSHub вернул не XML
+    # если RSSHub вернул HTML или пустоту
     if not data.startswith("<"):
         exit()
 
     try:
         root = ET.fromstring(data)
     except ET.ParseError:
-        # игнорируем XML ошибки
         exit()
 
     item = root.find(".//item")
-
     if item is None:
         exit()
 
@@ -64,19 +59,17 @@ try:
     guid = item.find("guid").text
 
     enclosure = item.find(".//enclosure")
-
     if enclosure is None:
         exit()
 
-    photo = enclosure.attrib["url"]
+    photo = enclosure.attrib.get("url")
 
     last = load_last()
 
     if guid != last:
-
         send_photo(photo, f"📸 Новый пост\n{link}")
-
         save_last(guid)
 
 except:
+    # никаких сообщений об ошибке в Telegram
     pass
