@@ -8,8 +8,8 @@ from instagrapi import Client
 TELEGRAM_TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
 
-IG_USERNAME = “aaron_sinani”
-IG_PASSWORD = “Alina19@_”
+IG_USERNAME = "aaron_sinani"
+IG_PASSWORD = "Alina19@_"
 
 TARGET_USER = "teenageengineering"
 
