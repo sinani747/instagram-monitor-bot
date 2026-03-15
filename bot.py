@@ -1,12 +1,11 @@
 import requests
 import time
-import json
 
 # ===== НАСТРОЙКИ =====
 
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
-USERNAME = "instagram_username"
+USERNAME = "teenageengineering"
 
 CHECK_URL = f"https://www.instagram.com/{USERNAME}/?__a=1&__d=dis"
 
@@ -15,8 +14,6 @@ TELEGRAM_PHOTO = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
 
 LAST_POST_FILE = "last_post.txt"
 
-
-# ===== функции =====
 
 def send_message(text):
     try:
@@ -75,27 +72,23 @@ def check_instagram():
     return post_id, photo, caption, link
 
 
-# ===== старт =====
+send_message("🤖 Instagram monitor started")
 
-send_message("🤖 Instagram bot started")
 
-while True:
+try:
 
-    try:
+    post_id, photo, caption, link = check_instagram()
 
-        post_id, photo, caption, link = check_instagram()
+    last_post = get_last_post()
 
-        last_post = get_last_post()
+    if post_id != last_post:
 
-        if post_id != last_post:
+        text = f"🔥 Новый пост\n\n{caption}\n\n{link}"
 
-            text = f"🔥 Новый пост\n\n{caption}\n\n{link}"
+        send_photo(photo, text)
 
-            send_photo(photo, text)
+        save_last_post(post_id)
 
-            save_last_post(post_id)
+except Exception as e:
 
-    except Exception as e:
-        send_message(f"⚠️ ошибка: {e}")
-
-    time.sleep(300)
+    send_message(f"⚠️ ошибка: {e}")
