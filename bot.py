@@ -1,95 +1,77 @@
 import requests
-import json
+import xml.etree.ElementTree as ET
 import os
 
 TOKEN = "8739941878:AAF3ZvpUlmenPixhJ1_hCJuOvnfWtcKINX0"
 CHAT_ID = "473201462"
 
-ACCOUNTS = [
-    "teenageengineering"
-]
+USERNAME = "teenageengineering"
 
-STATE_FILE = "state.json"
+STATE_FILE = "last.txt"
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-    "Accept": "*/*",
-    "Accept-Language": "en-US,en;q=0.9",
-    "X-IG-App-ID": "936619743392459"
-}
-
+rss_url = f"https://rsshub.app/instagram/user/{USERNAME}"
 
 def send_message(text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": text
+    })
 
 def send_photo(photo, caption):
+
     url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+
     requests.post(url, data={
         "chat_id": CHAT_ID,
         "photo": photo,
         "caption": caption
     })
 
+def load_last():
 
-def load_state():
     if os.path.exists(STATE_FILE):
+
         with open(STATE_FILE) as f:
-            return json.load(f)
-    return {}
 
+            return f.read().strip()
 
-def save_state(state):
+    return ""
+
+def save_last(value):
+
     with open(STATE_FILE, "w") as f:
-        json.dump(state, f)
 
+        f.write(value)
 
-def check_account(username, state):
+try:
 
-    url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
+    r = requests.get(rss_url)
 
-    r = requests.get(url, headers=headers, timeout=20)
+    root = ET.fromstring(r.text)
 
-    if r.status_code != 200:
-        send_message(f"⚠️ Instagram не отвечает @{username}")
-        return
+    item = root.find(".//item")
 
-    data = r.json()
+    link = item.find("link").text
 
-    posts = data["graphql"]["user"]["edge_owner_to_timeline_media"]["edges"]
+    guid = item.find("guid").text
 
-    if not posts:
-        return
+    photo = item.find(".//enclosure").attrib["url"]
 
-    post = posts[0]["node"]
+    last = load_last()
 
-    shortcode = post["shortcode"]
-    photo = post["display_url"]
+    if guid != last:
 
-    last = state.get(username)
+        send_photo(photo, f"📸 Новый пост\n{link}")
 
-    if shortcode != last:
+        save_last(guid)
 
-        link = f"https://instagram.com/p/{shortcode}"
+    else:
 
-        send_photo(photo, f"📸 Новый пост @{username}\n{link}")
+        print("нет нового поста")
 
-        state[username] = shortcode
+except Exception as e:
 
-
-def main():
-
-    state = load_state()
-
-    for account in ACCOUNTS:
-        try:
-            check_account(account, state)
-        except Exception as e:
-            send_message(f"Ошибка @{account}: {e}")
-
-    save_state(state)
-
-
-if __name__ == "__main__":
-    main()
+    send_message(f"Ошибка: {e}")
